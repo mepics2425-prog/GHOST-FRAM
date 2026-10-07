@@ -1,0 +1,3 @@
+﻿benchmark,positive_types,negative_types,eval_accounts,positive_accounts,top_k,precision_at_k,recall_at_k,f1_at_k,tn,fp,fn,tp
+general_anomaly,"bot,farm,hub,mule","guild,hardcore,normal",36,16,16,0.5625,0.5625,0.5625,13,7,7,9
+organized_abuse,"farm,hub,mule","guild,hardcore,normal",33,13,13,0.46153846153846156,0.46153846153846156,0.46153846153846156,13,7,7,6

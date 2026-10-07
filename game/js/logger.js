@@ -1,6 +1,6 @@
 (() => {
   const G = GF,
-    limits = { events: 12000, transactions: 6000, sessions: 3000 };
+    limits = { events: 50000, transactions: 10000, sessions: 5000 };
   G.logger = {
     now() {
       return new Date(G.world?.clock ?? Date.now()).toISOString();

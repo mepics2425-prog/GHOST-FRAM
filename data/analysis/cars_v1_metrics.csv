@@ -1,0 +1,2 @@
+﻿eval_accounts,positive_accounts,precision_at_k,recall_at_k,f1_at_k,tn,fp,fn,tp
+33,13,0.8461538461538461,0.8461538461538461,0.8461538461538461,18,2,2,11

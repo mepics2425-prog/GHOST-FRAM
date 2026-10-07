@@ -1,0 +1,3 @@
+﻿user_id,ground_truth_type,cars_score,cars_rank,primary_evidence,graph_flow_score,motif_component,sync_funnel_score,economic_score,repetition_score,volume_confidence,p2p_volume,tx_partner_sync,best_motif_role,best_motif_middle,best_motif_destination
+SYN_U011,hardcore,55.019,10,GraphFlow,79.0489190143002,50.11550227594281,47.91893611339396,19.23076923076923,16.216216216216218,0.9998927126704883,1828.0,60.62162049418753,middle,SYN_U011,SYN_U013
+SYN_U012,hardcore,53.349,11,GraphFlow,78.22351881032127,43.99192509057126,48.07618262721648,20.76613130929973,21.62162162162162,0.9998507667440613,1762.0,61.463220820374595,middle,SYN_U012,SYN_U013

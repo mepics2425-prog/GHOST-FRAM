@@ -1,0 +1,4 @@
+﻿role,top_n,hits,precision_at_n,recall_at_n
+farm,10,6,0.6,0.6
+mule,2,0,0.0,0.0
+hub,1,1,1.0,1.0

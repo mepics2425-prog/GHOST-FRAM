@@ -1,0 +1,2 @@
+﻿transaction_id,timestamp,sender_id,receiver_id,gold_amount,item_id,quantity,market_price,trade_price,transaction_type,metadata,price_deviation,trade_to_market_ratio
+T_8978a3b2-8ab3-41fe-b5f6-5a99ce17c1df,2026-10-07 05:18:04.333000+00:00,SYN_U034,SYN_U024,500,token,1,27995.0,500.0,market_trade,"{'listing_id': 'L_68e17111-a2c1-49f0-b78e-8c67e8e8ba34', 'restricted': True, 'buyer_character_id': 'SYN_C034', 'seller_character_id': 'SYN_C024'}",0.982139667797821,0.01786033220217896

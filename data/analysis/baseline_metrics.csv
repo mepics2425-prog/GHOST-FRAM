@@ -1,0 +1,2 @@
+﻿target_count,top_k,precision_at_k,recall_at_k,f1_at_k,tn,fp,fn,tp
+13,13,0.23076923076923078,0.23076923076923078,0.23076923076923078,13,10,10,3
