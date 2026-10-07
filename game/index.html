@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Aetheria : Moonberry Village</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="css/game.css" />
+  </head>
+  <body>
+    <main id="auth-screen" class="welcome">
+      <section class="welcome-art">
+        <div class="eyebrow">A LITTLE WORLD, A LITTLE WONDER</div>
+        <h1>Aetheria<span>Moonberry Village</span></h1>
+        <p>달빛 아래 작은 모험이 시작됩니다.</p>
+        <canvas
+          id="welcome-canvas"
+          width="650"
+          height="430"
+          aria-label="달빛 숲에서 움직이는 토끼 캐릭터"
+        ></canvas>
+        <div class="welcome-foot">
+          GHOST FARM PROJECT <span>PLAY · CONNECT · DISCOVER</span>
+        </div>
+      </section>
+      <section class="auth-card">
+        <div class="mini-star">✦</div>
+        <span class="eyebrow">YOUR NEXT ADVENTURE</span>
+        <h2>마을에 오신 걸 환영해요</h2>
+        <p>작은 발걸음으로, 나만의 이야기를.</p>
+        <form id="auth-form">
+          <label for="email">이메일</label
+          ><input
+            id="email"
+            type="email"
+            autocomplete="username"
+            required
+            placeholder="moon@aetheria.world"
+          /><label for="password">비밀번호</label
+          ><input
+            id="password"
+            type="password"
+            autocomplete="current-password"
+            minlength="8"
+            required
+            placeholder="8자 이상 입력해주세요"
+          /><button class="primary" type="submit">로그인 <span>→</span></button
+          ><button id="signup" type="button" class="secondary">회원가입</button>
+        </form>
+        <div class="divider">또는</div>
+        <button id="guest" class="ghost">게스트로 체험하기 →</button>
+        <p id="auth-message" role="status"></p>
+        <small id="auth-mode">Local Demo Mode · 이 브라우저에 저장됩니다</small>
+      </section>
+    </main>
+    <main id="characters-screen" class="hidden selection">
+      <div class="eyebrow">AETHERIA / YOUR CHARACTERS</div>
+      <h1>오늘은 어떤 모험을 할까요?</h1>
+      <p>모든 캐릭터의 이야기는 이 브라우저에 이어집니다.</p>
+      <div id="character-list"></div>
+      <form id="character-form">
+        <label for="nickname">새 캐릭터 이름</label>
+        <div class="input-row">
+          <input
+            id="nickname"
+            maxlength="16"
+            placeholder="달빛 여행자의 이름"
+            required
+          /><button class="primary">+ 새 캐릭터</button>
+        </div>
+      </form>
+      <button id="account-logout" class="ghost">로그아웃</button>
+      <p id="character-message" role="status"></p>
+    </main>
+    <main id="game-screen" class="hidden game-shell">
+      <header class="topbar">
+        <div class="brand">✦ AETHERIA <small>Moonberry Village</small></div>
+        <div class="world-status">
+          <span class="live-dot"></span> <span id="online"></span
+          ><span id="clock"></span>
+        </div>
+        <div class="top-actions">
+          <button id="pause">일시정지</button
+          ><button id="operator-toggle">운영자 모드</button
+          ><button id="leave">캐릭터 선택</button>
+        </div>
+      </header>
+      <div class="game-layout">
+        <aside class="leftbar">
+          <section class="card player-card">
+            <canvas id="portrait" width="96" height="96"></canvas>
+            <div>
+              <small>MOONBERRY RESIDENT</small>
+              <h2 id="player-name"></h2>
+              <span id="level"></span>
+            </div>
+            <div class="stats">
+              <label>HP <span id="hp-text"></span></label
+              ><progress id="hp" max="100"></progress
+              ><label>EXP <span id="exp-text"></span></label
+              ><progress id="exp"></progress>
+              <div class="gold-row">
+                <span>보유 골드</span><strong id="gold"></strong>
+              </div>
+            </div>
+          </section>
+          <section class="card">
+            <div class="section-title">
+              <h3>내 가방</h3>
+              <small>INVENTORY</small>
+            </div>
+            <div id="inventory"></div>
+          </section>
+          <section class="card guide">
+            <h3>작은 모험 안내서</h3>
+            <p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 이동</p>
+            <p><kbd>Shift</kbd> 대시 <kbd>E</kbd> 상호작용</p>
+            <p><kbd>Space</kbd> 슬라임 공격</p>
+            <p>
+              주민을 클릭하면 거래할 수 있어요. 모모에게 퀘스트, 포포에게 상점,
+              루나에게 거래소를 찾아가세요.
+            </p>
+            <div class="zone-legend">
+              <span class="mint">마을</span><span class="green">숲</span
+              ><span class="purple">동굴</span><span class="blue">호수</span
+              ><span class="pink">길드 광장</span>
+            </div>
+          </section>
+        </aside>
+        <section class="world-panel">
+          <div class="world-heading">
+            <div>
+              <small>A WORLD THAT GROWS WITH YOU</small>
+              <h2 id="zone-name">Moonberry Village</h2>
+            </div>
+            <span class="pill">LIVE WORLD</span>
+          </div>
+          <div class="canvas-wrap">
+            <canvas
+              id="world"
+              width="1280"
+              height="820"
+              tabindex="0"
+              aria-label="WASD로 이동하고 E로 상호작용하는 게임 월드"
+            ></canvas>
+            <div id="interaction-hint">WASD로 마을을 산책해 보세요</div>
+            <div id="pause-overlay" class="hidden">
+              잠시 쉬어가는 시간<span
+                >다시 시작을 누르면 모험이 이어집니다.</span
+              >
+            </div>
+          </div>
+          <div class="world-footer">
+            <span>✦ 달빛딸기는 작은 기적을 품고 있어요</span
+            ><span id="save-status">자동 저장 준비 중</span>
+          </div>
+          <section class="card activity-card">
+            <div class="section-title">
+              <h3>마을 소식</h3>
+              <small>LIVE ACTIVITY</small>
+            </div>
+            <div id="activity"></div>
+          </section>
+        </section>
+        <aside class="rightbar">
+          <section class="card">
+            <div class="section-title">
+              <h3>오늘의 모험</h3>
+              <small>QUESTS</small>
+            </div>
+            <div id="quests"></div>
+          </section>
+          <section class="card">
+            <div class="section-title">
+              <h3>달빛 시세</h3>
+              <small>MARKET</small>
+            </div>
+            <div id="prices"></div>
+            <p class="muted">
+              루나의 거래소에서 물품을 등록하거나 주민의 매물을 구매하세요.
+            </p>
+          </section>
+          <section class="card simulation-card">
+            <h3>살아있는 마을</h3>
+            <p>36명의 합성 주민이 이동하고, 사냥하고, 서로 거래합니다.</p>
+            <label for="speed">합성 세계 시간 배속</label
+            ><select id="speed">
+              <option value="1">1× 실시간</option>
+              <option value="60" selected>60× · 기본</option>
+              <option value="360">360× · 데이터 관찰</option></select
+            ><small
+              >이동·전투는 실시간. NPC 접속 일정과 행동 간격은 세계 시간
+              기준.</small
+            >
+            <div id="log-count"></div>
+          </section>
+        </aside>
+      </div>
+    </main>
+    <dialog id="interaction-dialog">
+      <button class="dialog-close" aria-label="닫기">×</button>
+      <div id="dialog-content"></div>
+    </dialog>
+    <dialog id="operator-dialog" class="operator">
+      <button class="dialog-close" aria-label="운영자 패널 닫기">×</button>
+      <div class="eyebrow">GHOST FARM / OPERATOR TOOLS</div>
+      <h2>마을의 보이지 않는 연결</h2>
+      <p class="truth-notice">
+        Ground-truth inspection · 합성 유형을 확인하는 화면입니다. 이상탐지
+        모델의 판정 결과가 아닙니다.
+      </p>
+      <div class="exports">
+        <button data-export="events">Event Log CSV 다운로드</button
+        ><button data-export="transactions">Transaction CSV 다운로드</button
+        ><button data-export="sessions">Session CSV 다운로드</button
+        ><button data-export="all" class="primary">JSON 전체 Export</button>
+      </div>
+      <div id="operator-summary"></div>
+      <div class="operator-grid">
+        <section>
+          <h3>실제 거래의 재화 흐름</h3>
+          <canvas
+            id="network"
+            width="760"
+            height="350"
+            aria-label="거래 금액에 따라 굵기가 달라지는 재화 네트워크"
+          ></canvas
+          ><small
+            >분홍: 합성 작업장 관계 · 회색: 기타 거래 · 선은 실제 발생한 거래만
+            표시</small
+          >
+        </section>
+        <section>
+          <h3>선택한 주민</h3>
+          <div id="npc-detail">아래 목록에서 주민을 선택하세요.</div>
+        </section>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>주민 / User ID</th>
+              <th>Ground truth</th>
+              <th>상태</th>
+              <th>골드</th>
+              <th>오늘 획득</th>
+              <th>수신</th>
+              <th>송신</th>
+              <th>거래 수</th>
+            </tr>
+          </thead>
+          <tbody id="npc-table"></tbody>
+        </table>
+      </div>
+      <p id="retention-note"></p>
+    </dialog>
+    <div id="toast" role="status" class="hidden"></div>
+    <script src="js/config.js"></script>
+    <script src="js/store.js"></script>
+    <script src="js/logger.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/economy.js"></script>
+    <script src="js/npc.js"></script>
+    <script src="js/render.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/operator.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>

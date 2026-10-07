@@ -1,13 +1,4 @@
-.venv/
-__pycache__/
-*.pyc
-.ipynb_checkpoints/
-
-data/*.csv
-data/*.parquet
-
+node_modules/
 .env
-.streamlit/secrets.toml
-
-Thumbs.db
-Desktop.ini
+.env.*
+docs/test-failure.png

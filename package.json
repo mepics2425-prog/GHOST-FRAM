@@ -1,0 +1,10 @@
+{
+  "name": "aetheria-moonberry-village",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playable Canvas RPG and synthetic anomaly-analysis telemetry",
+  "scripts": {
+    "start": "node server.cjs",
+    "test": "node tests/integrity.cjs"
+  }
+}
