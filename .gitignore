@@ -2,3 +2,9 @@ node_modules/
 .env
 .env.*
 docs/test-failure.png
+.venv/
+notebook.d/
+
+data/*.csv
+data/*.parquet
+data/*.json
