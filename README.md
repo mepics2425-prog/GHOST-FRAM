@@ -1,119 +1,416 @@
-# Aetheria : Moonberry Village
+# GHOST FARM
 
-GHOST FARM · 게임 이상탐지 분석가 포트폴리오용 **플레이 가능한 Canvas RPG + 합성 행동/거래 로그 생성기**.
+> **정상처럼 보이는 계정들은 어디에서 들키는가**  
+> 행동 동기화와 재화 유통망을 결합한 MMORPG 조직형 어뷰징 탐지 프로젝트
 
-작은 토끼 캐릭터로 마을과 숲, 동굴을 탐험하며 채집·전투·퀘스트·판매·거래를 진행합니다. 36명의 합성 주민도 실제로 이동하고 자원을 사용하며 거래합니다. 분석의 핵심 질문은 “개별 계정이 정상처럼 보여도 행동 동기화와 재화 흐름을 함께 보면 조직 구조가 드러나는가?”입니다.
+GHOST FARM은 플레이 가능한 합성 MMORPG 환경 **Aetheria : Moonberry Village**에서 행동·세션·거래 로그를 생성하고,  
+개별 계정 이상치가 아니라 **Farm → Relay(Mule) → Hub로 이어지는 조직형 재화 흐름**을 탐지하는 포트폴리오 프로젝트입니다.
 
-![게임 화면](docs/game.png)
+---
 
-## 실행
+## 1. 핵심 질문
 
-**설치 없이:** `index.html`을 Chrome 또는 Edge에서 엽니다. 모든 JS/CSS는 로컬 상대 경로이며 외부 이미지, 폰트, 라이브러리 의존성이 없습니다. 브라우저에 따라 `file://` 저장 정책이 다를 수 있어 아래 방법을 권장합니다.
+개별 계정만 보면 정상처럼 보이는 작업장 계정도  
+여러 계정의 행동과 거래 관계를 함께 보면 조직 구조가 드러나는가?
 
-**권장:** Node.js가 있으면 프로젝트 폴더에서 실행합니다.
+이 프로젝트는 다음 실패 사례에서 출발했습니다.
 
-```sh
+- Hardcore 정상 유저는 활동량과 거래량이 커서 단일 계정 이상탐지에서 자주 오탐됨
+- Guild 정상 유저는 Farm보다 행동 동기화가 더 높을 수 있음
+- Farm은 개별 행동만 보면 정상 사용자처럼 보이도록 설계됨
+- Mule 분산, 정상 거래 섞기, 소액 분할 송금으로 단순 규칙을 회피할 수 있음
+- Hub는 플레이 행동이 적어 일반 계정 점수 합산에서 과소평가되기 쉬움
+
+---
+
+## 2. 프로젝트 구성
+
+```text
+GHOST-FRAM/
+├─ game/                         # Aetheria 브라우저 게임 및 로그 생성기
+├─ src/
+│  ├─ inspect_logs.py
+│  ├─ eda_baseline_v2.py
+│  ├─ transaction_network.py
+│  ├─ behavior_sync.py
+│  ├─ cars_v1.py
+│  ├─ cars_v2.py
+│  ├─ cars_v3.py
+│  ├─ run_unseen_validation_v2.py
+│  ├─ run_unseen_validation_v3.py
+│  ├─ red_team_generate.py
+│  ├─ red_team_batch_validate.py
+│  └─ red_team_batch_validate_v3.py
+├─ data/
+│  ├─ raw/
+│  ├─ processed/
+│  ├─ analysis/
+│  ├─ unseen/
+│  ├─ redteam/
+│  ├─ redteam_v3/
+│  └─ validation/
+├─ docs/
+│  ├─ log-schema.md
+│  ├─ synthetic-users.md
+│  └─ verification.md
+├─ server.cjs
+├─ start-game.cmd
+└─ README.md
+```
+
+---
+
+## 3. Aetheria : Moonberry Village
+
+Aetheria는 이상탐지 실험용 합성 로그를 만들기 위한 브라우저 RPG입니다.
+
+플레이어와 36명의 합성 주민이 같은 월드에서 다음 행동을 수행합니다.
+
+- 이동 / 휴식
+- 채집
+- 전투
+- 퀘스트
+- 상점 판매
+- 유저 간 골드 거래
+- 마켓 거래
+- 로그인 / 로그아웃
+
+합성 주민은 7개 유형으로 구성됩니다.
+
+| 유형 | 수 | 의도 |
+|---|---:|---|
+| Normal | 10 | 일반 사용자 |
+| Hardcore | 4 | 활동량과 거래량이 큰 정상 사용자 |
+| Guild | 6 | 강하게 동기화된 정상 협동 사용자 |
+| Bot | 3 | 반복 행동 중심 자동화 계정 |
+| Farm | 10 | 개별 행동은 정상처럼 보이지만 재화를 Relay로 전달 |
+| Mule | 2 | 여러 Farm의 재화를 받아 Hub로 중계 |
+| Hub | 1 | 최종 재화 집결 계정 |
+
+자세한 설계는 [합성 사용자 유형](docs/synthetic-users.md)을 참고하세요.
+
+---
+
+## 4. 실행 방법
+
+### Windows
+
+프로젝트 루트에서:
+
+```powershell
+.\start-game.cmd
+```
+
+또는:
+
+```powershell
 node server.cjs
 ```
 
-브라우저에서 `http://127.0.0.1:4173`을 엽니다. `npm start`도 같습니다. 서버는 localhost 전용입니다. Windows에서는 `start-game.cmd`를 사용할 수 있습니다.
-
-1. 이메일 / 8자 이상 비밀번호로 회원가입하거나 게스트로 입장합니다.
-2. 캐릭터 이름을 입력해 생성한 뒤 **모험 시작**을 누릅니다. 계정당 최대 8개 슬롯입니다.
-3. **WASD / 방향키** 이동, **Shift** 대시, **E** 가까운 대상과 상호작용, **Space** 공격.
-4. 마을 왼쪽의 **모모**에게 퀘스트 3개를 수락합니다.
-5. 숲에서 딸기 6개와 별결정 2개를 채집하고 동굴에서 슬라임 3마리를 처치합니다.
-6. **포포**에게 별결정을 판매하고 모모에게 보상을 받습니다. 호수에서는 서서 쉬면 HP가 회복됩니다.
-7. **루나**에게 매물을 등록/취소/구매합니다. 움직이는 주민을 클릭하면 골드를 전송할 수 있습니다.
-8. 운영자 모드에서 유형과 실제 거래 그래프를 확인하고 CSV/JSON을 내려받습니다.
-
-자동 저장은 5초 간격, 거래·캐릭터 생성 등 주요 변경 시 즉시 수행합니다. 새로고침하면 로그인 상태와 선택 캐릭터, 골드·HP·EXP·인벤토리·퀘스트·월드 상태를 복구합니다. 페이지가 닫힌 동안 게임 시간은 진행하지 않습니다.
-
-## 구현 범위
-
-| 영역 | 실제 동작 |
-|---|---|
-| Authentication | Local 회원가입/로그인/오류 처리, 게스트, 세션 복구, Supabase REST 어댑터 |
-| Character | users/characters 분리, 다중 캐릭터 생성·선택·저장 |
-| Game Engine | 5개 연결 지역, 이동·대시, idle/walk/gather/attack/damaged 애니메이션 |
-| Gathering | 실제 오브젝트 근접 채집, 1.1초 진행, 이동 취소, 수량/EXP, 18초 재생성 |
-| Combat | 이동하는 슬라임 HP/피격/사망/15초 재생성, 플레이어 피해, 골드/EXP/젤 보상 |
-| Quests | 딸기 6개 전달, 수락 후 슬라임 3회 처치, 수락 후 별결정 2개 판매, 보상 중복 방지 |
-| Inventory / Shop | 4종 아이템, 실제 수량, 시세의 80%로 판매, 25 G 회복 |
-| Economy / Transaction | 시세 변동, 등록 에스크로·취소·구매, 잔액 검증, 주민 간 골드 전송 |
-| NPC Behavior | 36명, 7개 숨겨진 유형, 접속/종료 일정, 이동·채집·사냥·휴식·퀘스트·거래 |
-| Organization | 10 Farm → 2 Mule → 1 Hub 실제 골드 이동, 30,000 G 기준 토큰의 500 G 지정 판매 |
-| Event Logger | 실시간 JS 배열, 이벤트/거래/플레이 세션 기록, CSV 3종/전체 JSON 다운로드 |
-| Operator Tools | ground truth 전용 목록·계정 상세·거래 금액 비례 방향 그래프 |
-
-**20개 MVP 항목은 Local Demo Mode에서 구현 및 검증했습니다.** 상점과 거래소는 주민에게 가까이 다가가서 열고, 사용자 송금은 선택한 주민에게 보낼 수 있습니다. NPC의 사냥/채집도 월드 오브젝트를 소비하므로 플레이어와 경쟁할 수 있습니다.
-
-## 코드 구조
+브라우저에서:
 
 ```text
-index.html              로그인 / 선택 / 플레이 / 운영자 UI
-css/game.css            반응형 파스텔 UI
-js/config.js            Supabase 공개 설정
-js/store.js             상태 모델, localStorage, 지역/아이템 정의
-js/auth.js              Local PBKDF2 인증 / Guest / Supabase REST 어댑터
-js/game.js              게임 루프, 이동, 채집, 전투, 퀘스트
-js/render.js            Canvas로 직접 그린 월드·토끼·오브젝트·슬라임
-js/npc.js               합성 주민 스케줄과 행동, 조직 송금
-js/economy.js           재화 변경, 거래 검증, 에스크로, 시장
-js/logger.js            이벤트 / 거래 / 세션 / CSV·JSON
-js/operator.js          ground-truth inspection과 그래프
-js/app.js               화면·입력·NPC 대화·상점·UI 연결
-server.cjs              의존성 없는 로컬 정적 서버
-tests/integrity.cjs     Node 무결성 및 12시간 시뮬레이션 테스트
-tests/browser.cjs       선택 설치형 실제 브라우저 E2E
-docs/                   스키마, 유형, 검증 보고서, 스크린샷
-data/sample/            실제 엔진 및 브라우저에서 생성한 샘플
+http://127.0.0.1:4173
 ```
 
-## 데이터 분석 시 주의
+### 기본 조작
 
-운영자 그래프는 **ground-truth inspection**입니다. CARS나 다른 이상탐지 모델을 실행한 결과가 아닙니다. 일반 플레이 UI에는 `user_type`이 표시되지 않습니다. 이벤트/거래 CSV에도 유형 라벨이 없습니다. JSON의 `ground_truth`를 평가용 정답으로 별도 보관하세요.
+- `WASD` / 방향키: 이동
+- `Shift`: 대시
+- `E`: 상호작용 / 채집
+- `Space`: 공격
 
-세계 시간 배속은 1× / 60× / 360×입니다. 이벤트 timestamp와 세션 play_time은 **세계 시간**, 이동·채집 진행·공격 쿨다운·재생성은 **실시간**입니다. 배속 변경은 이벤트에 기록됩니다. 브라우저 탭이 숨겨지면 프레임이 제한될 수 있어 연속 장기 수집에는 활성 탭을 사용하세요. 로그인 노이즈 1~5분은 세계 시간 기준입니다. 기본 60×에서 약 1~5초 뒤 Farm이 접속합니다.
+게임 내 운영자 기능에서 Events / Transactions / Sessions / 전체 JSON을 Export할 수 있습니다.
 
-로컬 로그는 최대 이벤트 12,000 / 거래 6,000 / 세션 3,000행의 순환 버퍼입니다. 더 작은 브라우저 저장 한도에서는 오래된 로그를 먼저 줄여 캐릭터 상태를 저장합니다. 삭제 수는 `retention.dropped`와 운영자 패널에서 확인할 수 있습니다. 장기 수집 전/중간에 Export하세요. 순환 후 전체 과거 거래/세션을 재구성하려면 이전 Export도 필요합니다.
+---
 
-`SYSTEM_SHOP`은 무한 재화 원천/소각 계정입니다. 사냥·퀘스트 보상도 게임 내 발행 재화입니다. 사용자 간 송금과 거래소 구매는 두 사용자 간 잔액 합계를 보존합니다. 초기 NPC 보유 자산과 토큰은 명시적인 시드 자산입니다. 이 데이터는 합성이며 실제 위메이드 서비스의 계정·IP·행동을 나타내지 않습니다.
+## 5. 로그 구조
 
-자세한 내용: [로그 스키마](docs/log-schema.md), [합성 유형](docs/synthetic-users.md), [검증 보고서](docs/verification.md).
+주요 Event 필드:
 
-## Supabase 연결
-
-기본값은 빈 설정으로 Local Demo Mode입니다. `js/config.js`에 `supabaseUrl`과 **공개 anon key**를 지정하면 `/auth/v1/signup`, `/auth/v1/token?grant_type=password`, `/auth/v1/user` REST 어댑터를 사용합니다. 메일 인증이 필요하면 가입 후 메일 확인 안내를 표시합니다. 만료된 access token은 재로그인을 요청합니다.
-
-**현재 제공된 인증 정보가 없어 실제 Supabase 서버 연결은 검증하지 않았습니다.** Supabase 모드도 캐릭터/월드/로그는 이 브라우저에 저장합니다. 서버 DB 동기화, refresh token 자동 갱신, RLS, 운영자 권한은 다음 단계입니다. Local 계정 비밀번호는 PBKDF2-SHA256(120,000회) 해시와 salt를 저장하지만 로컬 데모 인증이며, 실서비스 권한 경계가 아닙니다. 공개키 외에 서비스 역할 키를 넣지 마세요.
-
-## 테스트
-
-의존성 없는 데이터 테스트:
-
-```sh
-node tests/integrity.cjs
-node tests/integrity.cjs --sample
+```text
+event_id
+timestamp
+user_id
+character_id
+session_id
+action_type
+map_id
+x
+y
+target_user_id
+item_id
+quantity
+gold_delta
+metadata
 ```
 
-브라우저 테스트는 별도 개발 환경에서 Playwright를 설치한 뒤 로컬 서버를 실행하고 수행합니다.
+Transaction 주요 필드:
 
-```sh
-npm install --no-save playwright
-npx playwright install chromium
-node tests/browser.cjs
-node tests/regression.cjs
+```text
+transaction_id
+timestamp
+sender_id
+receiver_id
+gold_amount
+item_id
+quantity
+market_price
+trade_price
+transaction_type
+metadata
 ```
 
-`PLAYWRIGHT_PATH`로 설치 경로, `BROWSER_CDP_URL`로 테스트 전용 Chromium 연결을 지정할 수도 있습니다. 테스트는 별도 브라우저 context를 사용하며 실사용 계정에 접근하지 않습니다. 서버에 API/DB 호출이 없는 Local Mode는 UI → 엔진 → 상태/로그 → localStorage → 재로드까지 검증합니다.
+Ground Truth는 모델 점수 계산에 사용하지 않고 **평가 단계에서만** 사용합니다.
 
-## 아직 구현하지 않은 기능과 다음 순서
+전체 스키마: [로그 스키마](docs/log-schema.md)
 
-1. Python의 1,000계정 이상 오프라인 생성기와 시드/기간별 재현 가능한 실험 데이터셋.
-2. 행동 엔트로피·주기성 baseline, 동기화/공유 환경/재화 그래프 feature 추출, Hardcore/Guild false-positive 평가.
-3. CARS 또는 그래프 기반 조직 이상탐지 모델, train/test 기간 분리 및 정답 누출 방지.
-4. Supabase의 서버 저장·RLS·운영자 권한·자동 토큰 갱신, 장기 로그의 DB/IndexedDB 보관.
-5. 충돌/길찾기, 카메라 확대·추적, 모바일 터치 조작, 장비/낚시/파티 전투 확장.
+---
 
-현재는 브라우저 내부의 가상 다중 사용자 세계입니다. 네트워크 멀티플레이, 실서비스 보안, 장애 복구 서버는 포함하지 않습니다. 나무/집/물은 장식 지형이고 맵 경계 외 지형 충돌은 아직 없습니다.
+## 6. 분석 파이프라인
+
+```text
+Aetheria Log
+    ↓
+Feature Inspection
+    ↓
+Isolation Forest Baseline
+    ↓
+Transaction Network
+    ↓
+Behavior Synchronization
+    ↓
+CARS V2
+    ↓
+Red-Team Failure Analysis
+    ↓
+CARS V3 Organization Flow Detector
+```
+
+### Baseline
+
+개별 계정 단위 특징에 Isolation Forest를 적용했습니다.
+
+문제는 Hardcore 정상 사용자가 작업장처럼 보이고,  
+Farm은 개별적으로는 정상에 가까워 조직형 탐지 성능이 낮다는 점이었습니다.
+
+### Behavior Synchronization
+
+행동 프로필, 시간대별 행동, 맵 이동, 로그인 시차를 결합해 SyncScore를 계산했습니다.
+
+중요한 반례:
+
+> Guild의 행동 동기화가 Farm보다 높게 나타날 수 있다.
+
+따라서 **높은 Sync만으로 작업장을 판정하지 않고 재화 Funnel과 결합**했습니다.
+
+---
+
+## 7. CARS V2
+
+CARS V2는 다음 구조를 결합합니다.
+
+- Farm purity
+- Mule purity
+- Hub purity
+- Ghost Chain
+- Economic anomaly
+- Repetition
+- 구조적 Funnel이 있을 때만 Sync interaction 반영
+
+Held-out `unseen_02` 결과:
+
+| 모델 | Precision@K | Recall@K | F1@K |
+|---|---:|---:|---:|
+| Isolation Forest | 0.538 | 0.538 | 0.538 |
+| CARS V2 | **0.923** | **0.923** | **0.923** |
+
+하지만 Red-Team에서 약점이 드러났습니다.
+
+| 공격 | CARS V2 F1@K |
+|---|---:|
+| Time jitter | 0.923 |
+| Mule split | 0.769 |
+| Micro transaction | 0.923 |
+| Normal mix | 0.846 |
+| Behavior noise | 0.923 |
+| Composite | 0.692 |
+
+핵심 실패 원인:
+
+1. Farm이 여러 Mule로 송금을 분산하면 primary receiver share가 약해짐
+2. Hub가 반복적으로 False Negative가 됨
+3. 정상 거래를 섞을수록 계정 단위 위험 점수 경계가 흐려짐
+
+---
+
+## 8. CARS V3 — Organization Flow Detector
+
+V3는 계정 하나가 아니라 **조직 전체의 자금 유통 구조**를 탐지하도록 변경했습니다.
+
+### 핵심 변경
+
+1. 단일 Primary Receiver 대신 **Relay Set 전체로 흐른 비율** 계산
+2. `Source → Relay → Collector` 구조를 graph message passing 방식으로 전파
+3. Hub/Collector branch를 별도로 유지해 다른 계정 점수에 희석되지 않도록 처리
+4. 기존 Account Risk와 Organization Support를 결합
+
+개념적으로:
+
+```text
+Farm A ─┐
+Farm B ─┼→ Mule 1 ─┐
+Farm C ─┘           │
+                    ├→ Hub
+Farm D ─┐           │
+Farm E ─┼→ Mule 2 ─┘
+Farm F ─┘
+```
+
+공격자가 Mule을 여러 개로 나누더라도  
+Relay 집합 전체와 최종 Collector 수렴 구조를 함께 평가합니다.
+
+---
+
+## 9. 최종 Held-out 검증
+
+새로 생성한 `unseen_03`은 V3 개발 이후 **코드 수정 없이** 평가했습니다.
+
+데이터 규모:
+
+- Events: 13,820
+- Transactions: 1,002
+- Sessions: 448
+- Synthetic Ground Truth accounts: 36
+
+결과:
+
+| 모델 | Precision@K | Recall@K | F1@K |
+|---|---:|---:|---:|
+| Isolation Forest | 0.538 | 0.538 | 0.538 |
+| CARS V2 | 0.923 | 0.923 | 0.923 |
+| **CARS V3** | **1.000** | **1.000** | **1.000** |
+
+CARS V3:
+
+```text
+TP = 13
+FP = 0
+FN = 0
+TN = 20
+```
+
+탐지:
+
+```text
+Farm = 10 / 10
+Mule = 2 / 2
+Hub  = 1 / 1
+```
+
+---
+
+## 10. V3 Red-Team 검증
+
+`unseen_03`을 기반으로 6종 회피 시나리오를 다시 생성했습니다.
+
+| 공격 | V3 F1@K | V2 F1@K | Baseline F1@K |
+|---|---:|---:|---:|
+| Time jitter | **1.000** | 0.923 | 0.538 |
+| Mule split | **1.000** | 0.846 | 0.538 |
+| Micro transaction | **1.000** | 0.923 | 0.538 |
+| Normal mix | **1.000** | 0.923 | 0.538 |
+| Behavior noise | **1.000** | 0.923 | 0.538 |
+| Composite | **1.000** | 0.846 | 0.538 |
+
+모든 시나리오에서:
+
+```text
+TP = 13
+FP = 0
+FN = 0
+TN = 20
+```
+
+단, 이 결과는 **synthetic environment에서 정의한 공격군에 대한 실험 결과**입니다.  
+실제 서비스 데이터에서의 100% 정확도나 완전히 미지의 공격 유형에 대한 일반화를 의미하지 않습니다.
+
+자세한 검증 과정: [검증 보고서](docs/verification.md)
+
+---
+
+## 11. 왜 단순 이상탐지보다 조직 구조가 중요했는가
+
+이 프로젝트에서 가장 중요한 결론은:
+
+> **개별 계정에는 이상이 없었다. 그런데 여러 계정을 함께 보자, 돈은 한 곳으로 흐르고 있었다.**
+
+Hardcore 사용자의 거래량은 높을 수 있고, Guild 사용자는 매우 동기화될 수 있습니다.
+
+따라서 실무형 조직 탐지에서는 단일 임계값보다:
+
+- 관계 구조
+- 재화 집중도
+- Relay 역할
+- Multi-hop flow
+- Counter-evidence
+- 시간적 패턴
+
+을 함께 보는 것이 중요합니다.
+
+---
+
+## 12. 재현 가능한 주요 명령
+
+### unseen 검증
+
+```powershell
+.\.venv\Scripts\python.exe .\src\run_unseen_validation_v3.py `
+  --input ".\data\unseen\aetheria-unseen-03.json" `
+  --label "unseen_03"
+```
+
+### Red-Team 데이터 생성
+
+```powershell
+.\.venv\Scripts\python.exe .\src\red_team_generate.py `
+  --input ".\data\unseen\aetheria-unseen-03.json" `
+  --outdir ".\data\redteam_v3" `
+  --scenario all
+```
+
+### V3 Red-Team 배치 검증
+
+```powershell
+$env:OPENBLAS_NUM_THREADS="1"
+$env:OMP_NUM_THREADS="1"
+$env:MKL_NUM_THREADS="1"
+$env:NUMEXPR_NUM_THREADS="1"
+
+.\.venv\Scripts\python.exe .\src\red_team_batch_validate_v3.py `
+  --indir ".\data\redteam_v3"
+```
+
+---
+
+## 13. 문서
+
+- [로그 스키마](docs/log-schema.md)
+- [합성 사용자 유형](docs/synthetic-users.md)
+- [검증 보고서](docs/verification.md)
+
+---
+
+## 14. 한계
+
+- 모든 데이터는 합성 데이터이며 실제 게임 서비스 사용자를 나타내지 않습니다.
+- Ground Truth는 평가용으로만 사용하지만, synthetic behavior generator 자체는 역할별 정책을 알고 있습니다.
+- `unseen_03` 기반 Red-Team은 새로운 스냅샷이지만 공격 종류 자체는 V2 실패 분석에서 이미 정의한 공격군입니다.
+- 따라서 V3의 결과는 **정의된 synthetic threat model 안에서의 강건성 검증**으로 해석해야 합니다.
+- 실제 운영 환경에서는 데이터 드리프트, 신규 공격 유형, 계정 공유, 디바이스/IP 관계, 결제·제재 이력 등을 추가 검토해야 합니다.
+
+---
+
+## 15. 프로젝트 한 줄 요약
+
+**개별 이상치 탐지에서 실패한 문제를 거래 그래프와 조직 단위 재화 흐름으로 재정의하고, held-out + red-team 검증까지 수행한 MMORPG 조직형 어뷰징 탐지 프로젝트.**
