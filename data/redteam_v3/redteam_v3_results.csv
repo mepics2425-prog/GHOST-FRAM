@@ -1,0 +1,7 @@
+﻿scenario,evaluation_accounts,positive_accounts,precision_at_k,recall_at_k,f1_at_k,tp,fp,fn,tn,detected_farm,detected_mule,detected_hub,cars_v2_f1_at_k,baseline_f1_at_k,validation_path,heldout_reference_f1,f1_delta_vs_unseen03
+time_jitter,33,13,1.0,1.0,1.0,13,0,0,20,10,2,1,0.9230769230769231,0.5384615384615384,C:\project\GHOST FARM\data\validation\redteam_v3_time_jitter,1.0,0.0
+mule_split,33,13,1.0,1.0,1.0,13,0,0,20,10,2,1,0.8461538461538461,0.5384615384615384,C:\project\GHOST FARM\data\validation\redteam_v3_mule_split,1.0,0.0
+micro_tx,33,13,1.0,1.0,1.0,13,0,0,20,10,2,1,0.9230769230769231,0.5384615384615384,C:\project\GHOST FARM\data\validation\redteam_v3_micro_tx,1.0,0.0
+normal_mix,33,13,1.0,1.0,1.0,13,0,0,20,10,2,1,0.9230769230769231,0.5384615384615384,C:\project\GHOST FARM\data\validation\redteam_v3_normal_mix,1.0,0.0
+behavior_noise,33,13,1.0,1.0,1.0,13,0,0,20,10,2,1,0.9230769230769231,0.5384615384615384,C:\project\GHOST FARM\data\validation\redteam_v3_behavior_noise,1.0,0.0
+composite,33,13,1.0,1.0,1.0,13,0,0,20,10,2,1,0.8461538461538461,0.5384615384615384,C:\project\GHOST FARM\data\validation\redteam_v3_composite,1.0,0.0
