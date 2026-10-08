@@ -6,6 +6,12 @@
 GHOST FARM은 플레이 가능한 합성 MMORPG 환경 **Aetheria : Moonberry Village**에서 행동·세션·거래 로그를 생성하고,  
 개별 계정 이상치가 아니라 **Farm → Relay(Mule) → Hub로 이어지는 조직형 재화 흐름**을 탐지하는 포트폴리오 프로젝트입니다.
 
+<p align="center">
+  <img src="docs/assets/03-gameplay-main.png" alt="Aetheria Moonberry Village 실제 게임 화면" width="100%">
+</p>
+
+> **실제 구현 화면** — 로그인·캐릭터 선택·플레이·운영자 도구·CSV/JSON 로그 Export까지 직접 구현한 synthetic MMORPG 환경입니다.
+
 ---
 
 ## 1. 핵심 질문
@@ -25,7 +31,7 @@ GHOST FARM은 플레이 가능한 합성 MMORPG 환경 **Aetheria : Moonberry Vi
 
 ## 2. Key Results
 
-![Held-out performance](docs/performance_comparison.png)
+![Held-out performance](docs/assets/14-performance-comparison.png)
 
 | 모델 | Precision@K | Recall@K | F1@K |
 |---|---:|---:|---:|
@@ -67,9 +73,10 @@ GHOST-FRAM/
 ├─ docs/
 │  ├─ log-schema.md
 │  ├─ synthetic-users.md
+│  ├─ architecture.md
+│  ├─ detection-spec.md
 │  ├─ verification.md
-│  ├─ performance_comparison.png
-│  └─ organization_flow.png
+│  └─ assets/                 # 실제 게임/로그 스크린샷 + 결과 시각화
 ├─ server.cjs
 ├─ start-game.cmd
 └─ README.md
@@ -80,6 +87,19 @@ GHOST-FRAM/
 ## 4. Aetheria : Moonberry Village
 
 Aetheria는 이상탐지 실험용 합성 로그를 만들기 위한 브라우저 RPG입니다.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/assets/01-login.png" alt="Aetheria 로그인 화면"><br><b>1. 로그인</b> — Local Demo 계정 진입</td>
+<td width="50%"><img src="docs/assets/02-character-select.png" alt="캐릭터 선택 화면"><br><b>2. 캐릭터 선택</b> — 플레이 캐릭터 생성/선택</td>
+</tr>
+</table>
+
+<p align="center">
+  <img src="docs/assets/05-gameplay-map.png" alt="Moonberry Village 게임 월드" width="82%">
+</p>
+
+실제 플레이 화면에서 합성 주민 36명이 이동·전투·채집·거래를 수행하며 이벤트 로그를 발생시킵니다.
 
 플레이어와 36명의 합성 주민이 같은 월드에서 다음 행동을 수행합니다.
 
@@ -143,6 +163,23 @@ http://127.0.0.1:4173
 
 ## 6. 로그 구조
 
+게임 내부 **운영자 도구**에서 거래 네트워크를 확인하고 Event / Transaction / Session / 전체 JSON을 Export할 수 있습니다.
+
+<p align="center">
+  <img src="docs/assets/08-operator-network.png" alt="Aetheria 운영자 도구와 실제 거래 네트워크" width="92%">
+</p>
+
+<table>
+<tr>
+<td width="50%"><img src="docs/assets/11-events-csv.png" alt="Event CSV"><br><b>Event Log</b></td>
+<td width="50%"><img src="docs/assets/10-transactions-csv.png" alt="Transaction CSV"><br><b>Transaction Log</b></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/assets/09-sessions-csv.png" alt="Session CSV"><br><b>Session Log</b></td>
+<td width="50%"><img src="docs/assets/12-raw-json.png" alt="Raw JSON"><br><b>Full JSON Snapshot</b></td>
+</tr>
+</table>
+
 주요 Event 필드:
 
 ```text
@@ -184,7 +221,31 @@ Ground Truth는 모델 점수 계산에 사용하지 않고 **평가 단계에�
 
 ---
 
-## 7. 분석 파이프라인
+## 7. Architecture
+
+```mermaid
+flowchart LR
+    A[Aetheria Game] --> B[Events / Transactions / Sessions]
+    B --> C[Feature Engineering]
+    C --> D[Isolation Forest Baseline]
+    C --> E[Transaction Network]
+    C --> F[Behavior Synchronization]
+    D --> G[CARS V2]
+    E --> G
+    F --> G
+    G --> H[Red-Team Failure Analysis]
+    H --> I[CARS V3 Organization Flow]
+    I --> J[Held-out + Red-Team Evaluation]
+```
+
+**게임 → 원천 로그 → 특징량 → 계정/그래프/동기화 분석 → 조직 흐름 탐지 → 검증**으로 이어지는 end-to-end 구조입니다.
+
+- [상세 Architecture](docs/architecture.md)
+- [Detection Specification](docs/detection-spec.md)
+
+---
+
+## 8. 분석 파이프라인
 
 ```text
 Aetheria Log
@@ -223,7 +284,7 @@ Farm은 개별적으로는 정상에 가까워 조직형 탐지 성능이 낮다
 
 ---
 
-## 8. CARS V2
+## 9. CARS V2
 
 CARS V2는 다음 구조를 결합합니다.
 
@@ -261,11 +322,11 @@ Held-out `unseen_02` 결과:
 
 ---
 
-## 9. CARS V3 — Organization Flow Detector
+## 10. CARS V3 — Organization Flow Detector
 
 V3는 계정 하나가 아니라 **조직 전체의 자금 유통 구조**를 탐지하도록 변경했습니다.
 
-![CARS V3 organization flow](docs/organization_flow.png)
+![CARS V3 organization flow](docs/assets/15-organization-flow.png)
 
 ### 핵심 변경
 
@@ -291,7 +352,7 @@ Relay 집합 전체와 최종 Collector 수렴 구조를 함께 평가합니다.
 
 ---
 
-## 10. 최종 Held-out 검증
+## 11. 최종 Held-out 검증
 
 새로 생성한 `unseen_03`은 V3 개발 이후 **코드 수정 없이** 평가했습니다.
 
@@ -329,7 +390,7 @@ Hub  = 1 / 1
 
 ---
 
-## 11. V3 Red-Team 검증
+## 12. V3 Red-Team 검증
 
 `unseen_03`을 기반으로 6종 회피 시나리오를 다시 생성했습니다.
 
@@ -358,7 +419,7 @@ TN = 20
 
 ---
 
-## 12. 왜 단순 이상탐지보다 조직 구조가 중요했는가
+## 13. 왜 단순 이상탐지보다 조직 구조가 중요했는가
 
 이 프로젝트에서 가장 중요한 결론은:
 
@@ -379,7 +440,7 @@ Hardcore 사용자의 거래량은 높을 수 있고, Guild 사용자는 매우 
 
 ---
 
-## 13. 재현 가능한 주요 명령
+## 14. 재현 가능한 주요 명령
 
 ### unseen 검증
 
@@ -412,15 +473,17 @@ $env:NUMEXPR_NUM_THREADS="1"
 
 ---
 
-## 14. 문서
+## 15. 문서
 
+- [Architecture](docs/architecture.md)
+- [Detection Specification](docs/detection-spec.md)
 - [로그 스키마](docs/log-schema.md)
 - [합성 사용자 유형](docs/synthetic-users.md)
 - [검증 보고서](docs/verification.md)
 
 ---
 
-## 15. 한계
+## 16. 한계
 
 - 모든 데이터는 합성 데이터이며 실제 게임 서비스 사용자를 나타내지 않습니다.
 - Ground Truth는 평가용으로만 사용하지만, synthetic behavior generator 자체는 역할별 정책을 알고 있습니다.
@@ -431,6 +494,6 @@ $env:NUMEXPR_NUM_THREADS="1"
 
 ---
 
-## 16. 프로젝트 한 줄 요약
+## 17. 프로젝트 한 줄 요약
 
 **개별 이상치 탐지에서 실패한 문제를 거래 그래프와 조직 단위 재화 흐름으로 재정의하고, held-out + red-team 검증까지 수행한 MMORPG 조직형 어뷰징 탐지 프로젝트.**

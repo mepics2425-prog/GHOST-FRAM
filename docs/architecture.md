@@ -1,380 +1,212 @@
 # GHOST FARM Architecture
 
-## 1. 목적
+> **Aetheria에서 실제 로그를 만들고, 그 로그가 어떻게 CARS V3까지 흘러가는지 보여주는 시스템 아키텍처 문서입니다.**
 
-GHOST FARM은 합성 MMORPG 환경 **Aetheria : Moonberry Village**에서 생성되는 행동·세션·거래 로그를 이용해  
-개별 계정 이상치가 아니라 **조직 단위의 재화 유통 구조**를 탐지하는 프로젝트입니다.
-
-핵심 탐지 대상은 다음과 같습니다.
-
-```text
-Farm → Relay(Mule) → Hub
-```
-
-단일 계정의 활동량이나 거래량만 보는 것이 아니라  
-**다수 계정 간 관계, 재화 집중도, relay 구조, multi-hop flow**를 함께 평가합니다.
+<p align="center">
+  <img src="assets/03-gameplay-main.png" alt="Aetheria Moonberry Village 실제 구현 화면" width="100%">
+</p>
 
 ---
 
-## 2. 전체 시스템 구조
+## 1. End-to-End Architecture
 
-```text
-┌────────────────────────────────────┐
-│ Aetheria : Moonberry Village       │
-│ Browser MMORPG Simulator           │
-│                                    │
-│ - Player                           │
-│ - Normal / Hardcore / Guild        │
-│ - Bot / Farm / Mule / Hub          │
-└─────────────────┬──────────────────┘
-                  │
-                  ▼
-┌────────────────────────────────────┐
-│ Raw Telemetry Export               │
-│                                    │
-│ events                             │
-│ transactions                       │
-│ sessions                           │
-│ users                              │
-│ ground_truth (evaluation only)     │
-└─────────────────┬──────────────────┘
-                  │
-                  ▼
-┌────────────────────────────────────┐
-│ Feature Engineering                │
-│                                    │
-│ Account Features                   │
-│ Transaction Features               │
-│ Graph Features                     │
-│ Behavior Synchronization Features  │
-└───────────────┬────────────────────┘
-                │
-       ┌────────┴─────────┐
-       ▼                  ▼
-┌───────────────┐  ┌──────────────────────┐
-│ Baseline      │  │ Structural Analysis  │
-│ Isolation     │  │                      │
-│ Forest        │  │ Graph / Sync / Flow  │
-└───────┬───────┘  └──────────┬───────────┘
-        │                      │
-        └──────────┬───────────┘
-                   ▼
-        ┌──────────────────────┐
-        │ CARS V2              │
-        │ Account + Chain Risk │
-        └──────────┬───────────┘
-                   │
-                   ▼
-        ┌──────────────────────┐
-        │ Red-Team Analysis    │
-        │                      │
-        │ - Mule Split         │
-        │ - Normal Mix         │
-        │ - Micro TX           │
-        │ - Time Jitter        │
-        │ - Behavior Noise     │
-        │ - Composite          │
-        └──────────┬───────────┘
-                   │
-                   ▼
-        ┌───────────────────────────────┐
-        │ CARS V3                      │
-        │ Organization Flow Detector   │
-        │                               │
-        │ Source → Relay → Collector   │
-        │ Relay Set                    │
-        │ Organization Support         │
-        │ Hub Branch                   │
-        └──────────┬────────────────────┘
-                   │
-                   ▼
-        ┌───────────────────────────────┐
-        │ Evaluation                    │
-        │                               │
-        │ DEV                           │
-        │ Held-out unseen snapshot      │
-        │ Red-Team robustness           │
-        └───────────────────────────────┘
+```mermaid
+flowchart LR
+    A[Aetheria MMORPG] --> B[Telemetry Export]
+    B --> C1[Events]
+    B --> C2[Transactions]
+    B --> C3[Sessions]
+
+    C1 --> D[Feature Engineering]
+    C2 --> D
+    C3 --> D
+
+    D --> E1[Account Features]
+    D --> E2[Transaction Graph]
+    D --> E3[Behavior Sync]
+
+    E1 --> F[Isolation Forest Baseline]
+    E1 --> G[CARS]
+    E2 --> G
+    E3 --> G
+
+    G --> H[CARS V2]
+    H --> I[Red-Team Error Analysis]
+    I --> J[CARS V3 Organization Flow]
+    J --> K[Held-out unseen_03]
+    J --> L[6 Red-Team Scenarios]
 ```
+
+이 프로젝트의 핵심은 **분석용 CSV를 임의로 만든 것이 아니라, 플레이 가능한 게임 환경에서 로그가 실제로 발생하도록 구현했다는 점**입니다.
 
 ---
 
-## 3. 데이터 생성 계층
+## 2. Game Layer — 로그가 만들어지는 곳
 
-Aetheria는 탐지 실험을 위한 합성 MMORPG 로그 생성기입니다.
+<table>
+<tr>
+<td width="50%"><img src="assets/01-login.png" alt="로그인"><br><b>Login</b></td>
+<td width="50%"><img src="assets/02-character-select.png" alt="캐릭터 선택"><br><b>Character Select</b></td>
+</tr>
+</table>
 
-합성 계정 구성:
+<p align="center"><img src="assets/05-gameplay-map.png" alt="게임 월드" width="88%"></p>
 
-| 역할 | 수 | 목적 |
-|---|---:|---|
-| Normal | 10 | 일반 사용자 |
-| Hardcore | 4 | 높은 활동량·거래량을 가진 정상 사용자 |
-| Guild | 6 | 높은 행동 동기화를 가진 정상 협동 사용자 |
-| Bot | 3 | 반복 행동 기반 자동화 계정 |
-| Farm | 10 | 재화 생산 후 Relay로 전달 |
-| Mule | 2 | Farm 재화를 모아 Hub로 전달 |
-| Hub | 1 | 최종 재화 집결 |
+Aetheria에는 플레이어 외에 **36명의 합성 주민**이 존재합니다.
 
-이 설계는 단순한 정상/비정상 이분법보다  
-**False Positive challenge와 조직 구조 탐지**를 테스트하기 위해 구성되었습니다.
+- Normal 10
+- Hardcore 4
+- Guild 6
+- Bot 3
+- Farm 10
+- Mule 2
+- Hub 1
 
----
-
-## 4. 로그 계층
-
-### Events
-
-행동 단위 로그:
-
-```text
-event_id
-timestamp
-user_id
-character_id
-session_id
-action_type
-map_id
-x
-y
-target_user_id
-item_id
-quantity
-gold_delta
-metadata
-```
-
-### Transactions
-
-재화 이동 로그:
-
-```text
-transaction_id
-timestamp
-sender_id
-receiver_id
-gold_amount
-item_id
-quantity
-market_price
-trade_price
-transaction_type
-metadata
-```
-
-### Sessions
-
-접속 및 플레이 로그:
-
-```text
-session_id
-user_id
-character_id
-login_at
-logout_at
-play_time
-device_group
-ip_group
-synthetic
-```
+이들은 이동, 전투, 채집, 상점 판매, 유저 간 거래, 마켓 거래, 로그인/로그아웃을 수행합니다.
 
 ---
 
-## 5. Feature Engineering
+## 3. Observability Layer — 게임 내부 운영자 도구
 
-### Account-level
+<p align="center"><img src="assets/08-operator-network.png" alt="운영자 도구와 거래망" width="96%"></p>
 
+운영자 화면은 단순 디버그 페이지가 아니라 **synthetic world에서 어떤 계정 간 재화 이동이 발생했는지 검수하는 관찰 도구**입니다.
+
+여기서 확인 가능한 정보:
+
+- 실제 발생한 거래 네트워크
+- Farm → Mule → Hub 흐름
+- 계정별 Ground Truth 역할(검수용)
+- 송신/수신 골드
+- 거래 수
+- Event / Transaction / Session CSV Export
+- Full JSON Export
+
+> Ground Truth는 **모델 점수 계산에는 사용하지 않고 평가 단계에서만 사용**합니다.
+
+---
+
+## 4. Raw Data Layer
+
+<table>
+<tr>
+<td width="50%"><img src="assets/11-events-csv.png" alt="이벤트 로그"><br><b>Events</b> — 행동·위치·전투·아이템</td>
+<td width="50%"><img src="assets/10-transactions-csv.png" alt="거래 로그"><br><b>Transactions</b> — sender/receiver/재화/가격</td>
+</tr>
+<tr>
+<td width="50%"><img src="assets/09-sessions-csv.png" alt="세션 로그"><br><b>Sessions</b> — 접속·플레이 시간·device/IP group</td>
+<td width="50%"><img src="assets/12-raw-json.png" alt="전체 JSON"><br><b>Snapshot JSON</b> — 전체 월드 상태 및 Ground Truth</td>
+</tr>
+</table>
+
+---
+
+## 5. Feature Layer
+
+```mermaid
+flowchart TB
+    R[Raw Logs] --> A[Account Features]
+    R --> B[Graph Features]
+    R --> C[Behavior Sync Features]
+
+    A --> A1[Action diversity / entropy]
+    A --> A2[Gold in-out / counterparties]
+    A --> A3[Price deviation / outflow]
+
+    B --> B1[Weighted flow]
+    B --> B2[HHI / concentration]
+    B --> B3[Betweenness / PageRank]
+
+    C --> C1[Login Sync]
+    C --> C2[Temporal Action Cosine]
+    C --> C3[Map Timeline Cosine]
+```
+
+### Account
 - event count
 - action diversity
-- map diversity
 - action entropy
-- play time
-- outgoing/incoming gold
-- unique senders/receivers
-- receiver concentration
+- map diversity
+- gold sent / received
+- unique sender / receiver
+- max receiver share
 - outflow ratio
-- price deviation
 
-### Graph-level
-
-- weighted in/out flow
+### Graph
+- weighted in / out
 - in/out degree
 - HHI
 - flow balance
 - betweenness
 - PageRank
-- sender/receiver concentration
 
-### Behavior Synchronization
-
-- LoginSync
-- ActionProfileCosine
-- TemporalActionCosine
-- MapTimelineCosine
-
-중요한 관찰:
-
-> Guild 계정의 Sync가 Farm보다 높게 나타날 수 있다.
-
-따라서 Sync는 단독 이상 신호가 아니라  
-**재화 Funnel이 존재할 때 구조적 보조 신호**로 사용합니다.
+### Behavior Sync
+- login sync
+- action-profile cosine
+- temporal-action cosine
+- map-timeline cosine
 
 ---
 
-## 6. Baseline
+## 6. Detection Layer
 
-Baseline은 account-level feature에 **Isolation Forest**를 적용합니다.
+### Baseline
 
-장점:
+Isolation Forest는 **계정 하나의 feature**에서 이상치를 찾습니다.
 
-- Ground Truth 없이 비지도 방식으로 사용 가능
-- 빠르게 기준 성능 확보 가능
-
-한계:
-
-- Hardcore 정상 계정을 위험 계정으로 오탐
-- Farm은 개별 행동만 보면 정상과 유사
+문제:
+- Hardcore 정상 사용자를 오탐할 수 있음
+- 정상 행동을 섞은 Farm을 놓칠 수 있음
 - 조직 구조를 직접 표현하지 못함
 
----
+### CARS V2
 
-## 7. CARS V2
+계정 Risk + 거래 구조 + Sync를 결합했습니다.
 
-CARS V2는 계정 단위 신호와 거래 구조를 결합합니다.
-
-주요 요소:
-
-```text
-Farm Purity
-Mule Purity
-Hub Purity
-Ghost Chain
-Economic Anomaly
-Repetition
-Structural Sync Interaction
-```
-
-V2는 Baseline보다 크게 개선되었지만 Red-Team에서 다음 약점이 확인되었습니다.
-
+하지만 Red-Team에서:
 - Mule Split
 - Normal Mix
 - Composite
 - Hub False Negative
 
----
+문제가 드러났습니다.
 
-## 8. CARS V3
+### CARS V3
 
-V3는 핵심 질문을 바꿉니다.
-
-```text
-이 계정이 이상한가?
-        ↓
-이 계정들이 하나의 조직으로 움직이는가?
+```mermaid
+flowchart LR
+    S1[Farm] --> R1[Relay / Mule]
+    S2[Farm] --> R1
+    S3[Farm] --> R2[Relay / Mule]
+    S4[Farm] --> R2
+    R1 --> H[Collector / Hub]
+    R2 --> H
 ```
 
-### 8.1 Relay Set
-
-V2는 single primary receiver에 상대적으로 의존했습니다.
-
-V3는 다음처럼 여러 Relay로 분산되더라도:
-
-```text
-Farm A → Mule 1
-Farm A → Mule 2
-Farm A → Mule 3
-```
-
-전체 Relay 집합으로 전달된 비율을 평가합니다.
+V3는 **single primary receiver**가 아니라 **Relay Set 전체**와 `Source → Relay → Collector` multi-hop 구조를 평가합니다.
 
 ---
 
-### 8.2 Organization Path
+## 7. Evaluation Layer
 
-핵심 구조:
-
-```text
-Source → Relay → Collector
-```
-
-각 계정의 risk뿐 아니라  
-**upstream/downstream 관계를 통한 organization support**를 계산합니다.
-
----
-
-### 8.3 Hub Branch
-
-Hub는 이벤트 수가 적어 기존 합산 점수에서 과소평가될 수 있습니다.
-
-V3는 Collector/Hub 평가 branch를 별도로 유지하여:
-
-- 높은 incoming concentration
-- upstream relay support
-- 낮은 outgoing
-- 조직 전체 flow 수렴
-
-을 독립적으로 평가합니다.
-
----
-
-## 9. 평가 구조
-
-### Development
-
-- calibration snapshot
-- unseen_01
-- unseen_02
-- V2 Red-Team
-
-이 데이터는 error analysis와 V3 설계에 영향을 주었기 때문에  
-최종 held-out 성능으로 취급하지 않습니다.
-
-### Held-out
-
-V3 설계 이후 새로 생성한:
-
-```text
-unseen_03
-```
-
-에서 코드 수정 없이 검증했습니다.
-
-### Red-Team
-
-`unseen_03` 기반으로 다음 6종 공격을 적용했습니다.
-
-```text
-time_jitter
-mule_split
-micro_tx
-normal_mix
-behavior_noise
-composite
-```
-
----
-
-## 10. 최종 결과
-
-### unseen_03
+<p align="center"><img src="assets/14-performance-comparison.png" alt="성능 비교" width="78%"></p>
 
 | 모델 | Precision@K | Recall@K | F1@K |
 |---|---:|---:|---:|
 | Isolation Forest | 0.538 | 0.538 | 0.538 |
 | CARS V2 | 0.923 | 0.923 | 0.923 |
-| CARS V3 | **1.000** | **1.000** | **1.000** |
+| **CARS V3** | **1.000** | **1.000** | **1.000** |
 
-CARS V3:
+`unseen_03`은 V3 설계 이후 새로 생성한 synthetic held-out snapshot입니다.
+
+CARS V3 결과:
 
 ```text
 TP = 13
 FP = 0
 FN = 0
 TN = 20
-```
 
-Role Detection:
-
-```text
 Farm = 10 / 10
 Mule = 2 / 2
 Hub  = 1 / 1
@@ -382,56 +214,29 @@ Hub  = 1 / 1
 
 ---
 
-## 11. 설계 원칙
+## 8. 운영 관점
 
-### Ground Truth Isolation
+탐지 결과는 자동 Ban보다는 다음 흐름을 가정합니다.
 
-Ground Truth는 다음에 사용하지 않습니다.
-
-- feature engineering
-- Isolation Forest training
-- CARS V2/V3 scoring
-- graph scoring
-- Sync scoring
-
-다음 평가 단계에서만 사용합니다.
-
-- Precision
-- Recall
-- F1
-- FP/FN analysis
-
-### No Auto-ban
-
-CARS 점수는 자동 제재보다는:
-
-```text
-Detection
-   ↓
-Investigation Queue
-   ↓
-Counter-Evidence Review
-   ↓
-Human Decision
+```mermaid
+flowchart LR
+    A[CARS V3] --> B[Risk Ranking]
+    B --> C[Organization Evidence]
+    C --> D[Counter-Evidence Review]
+    D --> E[Investigation Queue]
+    E --> F[Human Decision]
 ```
 
-형태의 운영 구조를 가정합니다.
+즉, **높은 활동량이나 높은 Sync만으로 제재하지 않고 조직 구조와 반대 근거를 함께 확인**합니다.
 
 ---
 
-## 12. 한계
+## 9. 한계
 
 - synthetic data 기반
-- simulator distribution 안에서의 held-out
-- predefined red-team attack families
-- `@K` 평가 방식 사용
-- 실제 운영 threshold calibration 미적용
-- real-world device/payment/social graph 미포함
+- simulator distribution 내부 held-out
+- predefined red-team attack family
+- 현재 핵심 평가는 `Precision@K / Recall@K / F1@K`
+- production threshold / review budget은 별도 설계 필요
 
-따라서 실제 서비스 성능을 100%로 주장하지 않습니다.
-
----
-
-## 13. 프로젝트 핵심 문장
-
-> **개별 계정에는 이상이 없었다. 그런데 여러 계정을 함께 보자, 돈은 한 곳으로 흐르고 있었다.**
+따라서 이 결과는 실제 서비스의 100% 탐지를 의미하지 않습니다.
