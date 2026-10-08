@@ -23,7 +23,22 @@ GHOST FARM은 플레이 가능한 합성 MMORPG 환경 **Aetheria : Moonberry Vi
 
 ---
 
-## 2. 프로젝트 구성
+## 2. Key Results
+
+![Held-out performance](docs/performance_comparison.png)
+
+| 모델 | Precision@K | Recall@K | F1@K |
+|---|---:|---:|---:|
+| Isolation Forest | 0.538 | 0.538 | 0.538 |
+| CARS V2 | 0.923 | 0.923 | 0.923 |
+| **CARS V3** | **1.000** | **1.000** | **1.000** |
+
+> 신규 synthetic held-out snapshot `unseen_03`에서 CARS V3는 Precision@K, Recall@K, F1@K = **1.000**을 기록했습니다.  
+> 이 결과는 합성 환경에서의 실험 결과이며 실제 게임 서비스에서의 100% 정확도를 의미하지 않습니다.
+
+---
+
+## 3. 프로젝트 구성
 
 ```text
 GHOST-FRAM/
@@ -52,7 +67,9 @@ GHOST-FRAM/
 ├─ docs/
 │  ├─ log-schema.md
 │  ├─ synthetic-users.md
-│  └─ verification.md
+│  ├─ verification.md
+│  ├─ performance_comparison.png
+│  └─ organization_flow.png
 ├─ server.cjs
 ├─ start-game.cmd
 └─ README.md
@@ -60,7 +77,7 @@ GHOST-FRAM/
 
 ---
 
-## 3. Aetheria : Moonberry Village
+## 4. Aetheria : Moonberry Village
 
 Aetheria는 이상탐지 실험용 합성 로그를 만들기 위한 브라우저 RPG입니다.
 
@@ -91,7 +108,7 @@ Aetheria는 이상탐지 실험용 합성 로그를 만들기 위한 브라우�
 
 ---
 
-## 4. 실행 방법
+## 5. 실행 방법
 
 ### Windows
 
@@ -124,7 +141,7 @@ http://127.0.0.1:4173
 
 ---
 
-## 5. 로그 구조
+## 6. 로그 구조
 
 주요 Event 필드:
 
@@ -167,7 +184,7 @@ Ground Truth는 모델 점수 계산에 사용하지 않고 **평가 단계에�
 
 ---
 
-## 6. 분석 파이프라인
+## 7. 분석 파이프라인
 
 ```text
 Aetheria Log
@@ -206,7 +223,7 @@ Farm은 개별적으로는 정상에 가까워 조직형 탐지 성능이 낮다
 
 ---
 
-## 7. CARS V2
+## 8. CARS V2
 
 CARS V2는 다음 구조를 결합합니다.
 
@@ -244,9 +261,11 @@ Held-out `unseen_02` 결과:
 
 ---
 
-## 8. CARS V3 — Organization Flow Detector
+## 9. CARS V3 — Organization Flow Detector
 
 V3는 계정 하나가 아니라 **조직 전체의 자금 유통 구조**를 탐지하도록 변경했습니다.
+
+![CARS V3 organization flow](docs/organization_flow.png)
 
 ### 핵심 변경
 
@@ -272,7 +291,7 @@ Relay 집합 전체와 최종 Collector 수렴 구조를 함께 평가합니다.
 
 ---
 
-## 9. 최종 Held-out 검증
+## 10. 최종 Held-out 검증
 
 새로 생성한 `unseen_03`은 V3 개발 이후 **코드 수정 없이** 평가했습니다.
 
@@ -310,7 +329,7 @@ Hub  = 1 / 1
 
 ---
 
-## 10. V3 Red-Team 검증
+## 11. V3 Red-Team 검증
 
 `unseen_03`을 기반으로 6종 회피 시나리오를 다시 생성했습니다.
 
@@ -339,7 +358,7 @@ TN = 20
 
 ---
 
-## 11. 왜 단순 이상탐지보다 조직 구조가 중요했는가
+## 12. 왜 단순 이상탐지보다 조직 구조가 중요했는가
 
 이 프로젝트에서 가장 중요한 결론은:
 
@@ -360,7 +379,7 @@ Hardcore 사용자의 거래량은 높을 수 있고, Guild 사용자는 매우 
 
 ---
 
-## 12. 재현 가능한 주요 명령
+## 13. 재현 가능한 주요 명령
 
 ### unseen 검증
 
@@ -393,7 +412,7 @@ $env:NUMEXPR_NUM_THREADS="1"
 
 ---
 
-## 13. 문서
+## 14. 문서
 
 - [로그 스키마](docs/log-schema.md)
 - [합성 사용자 유형](docs/synthetic-users.md)
@@ -401,16 +420,17 @@ $env:NUMEXPR_NUM_THREADS="1"
 
 ---
 
-## 14. 한계
+## 15. 한계
 
 - 모든 데이터는 합성 데이터이며 실제 게임 서비스 사용자를 나타내지 않습니다.
 - Ground Truth는 평가용으로만 사용하지만, synthetic behavior generator 자체는 역할별 정책을 알고 있습니다.
 - `unseen_03` 기반 Red-Team은 새로운 스냅샷이지만 공격 종류 자체는 V2 실패 분석에서 이미 정의한 공격군입니다.
 - 따라서 V3의 결과는 **정의된 synthetic threat model 안에서의 강건성 검증**으로 해석해야 합니다.
+- 현재 핵심 평가는 `Precision@K / Recall@K / F1@K` 기반이며, 실제 운영 환경에서는 별도의 threshold calibration과 review budget 설계가 필요합니다.
 - 실제 운영 환경에서는 데이터 드리프트, 신규 공격 유형, 계정 공유, 디바이스/IP 관계, 결제·제재 이력 등을 추가 검토해야 합니다.
 
 ---
 
-## 15. 프로젝트 한 줄 요약
+## 16. 프로젝트 한 줄 요약
 
 **개별 이상치 탐지에서 실패한 문제를 거래 그래프와 조직 단위 재화 흐름으로 재정의하고, held-out + red-team 검증까지 수행한 MMORPG 조직형 어뷰징 탐지 프로젝트.**
